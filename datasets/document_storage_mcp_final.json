@@ -1093,15 +1093,18 @@
     "verified_files": [
       {
         "type": "Government_ID",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_name": "James Vance"
       },
       {
         "type": "Pay_Stub",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_employer": "Tech Corp"
       },
       {
         "type": "Bank_Statement",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "statement_period_days": 90
       }
     ],
     "missing_requirements": []
@@ -1112,15 +1115,18 @@
     "verified_files": [
       {
         "type": "Government_ID",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_name": "Sophia Miller"
       },
       {
         "type": "Pay_Stub",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_employer": "Retail Logistics"
       },
       {
         "type": "Bank_Statement",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "statement_period_days": 90
       }
     ],
     "missing_requirements": []
@@ -1131,15 +1137,18 @@
     "verified_files": [
       {
         "type": "Government_ID",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_name": "Jackson Reed"
       },
       {
         "type": "Pay_Stub",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_employer": "Global Manufacturing"
       },
       {
         "type": "Bank_Statement",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "statement_period_days": 90
       }
     ],
     "missing_requirements": []
@@ -1150,15 +1159,52 @@
     "verified_files": [
       {
         "type": "Government_ID",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_name": "Mia Jenkins"
       },
       {
         "type": "Pay_Stub",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "extracted_employer": "Hospitality Group"
       },
       {
         "type": "Bank_Statement",
-        "status": "VERIFIED"
+        "status": "VERIFIED",
+        "statement_period_days": 90
+      }
+    ],
+    "missing_requirements": []
+  },
+  "CU-055": {
+    "customer_id": "CU-055",
+    "document_vault_status": "COMPLETE",
+    "verified_files": [
+      {
+        "type": "Government_ID",
+        "status": "VERIFIED",
+        "extracted_name": "Arjun Mehta"
+      },
+      {
+        "type": "Bank_Statement",
+        "status": "VERIFIED",
+        "statement_period_days": 90
+      }
+    ],
+    "missing_requirements": []
+  },
+  "CU-056": {
+    "customer_id": "CU-056",
+    "document_vault_status": "COMPLETE",
+    "verified_files": [
+      {
+        "type": "Government_ID",
+        "status": "VERIFIED",
+        "extracted_name": "Priya Sharma"
+      },
+      {
+        "type": "Bank_Statement",
+        "status": "VERIFIED",
+        "statement_period_days": 90
       }
     ],
     "missing_requirements": []

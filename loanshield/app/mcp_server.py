@@ -1,18 +1,18 @@
 import os
 import json
 import csv
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, List
 from mcp.server.fastmcp import FastMCP
 
 # Create the MCP server instance
 mcp = FastMCP("loanshield_services")
 
-# Resolve absolute path to datasets
-DATASETS_DIR = "/Users/rk/kaggle/Loan_Shield_CapStone_Project/datasets"
-if not os.path.exists(DATASETS_DIR):
-    # Fallback to local sibling path if run in other environments
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    DATASETS_DIR = os.path.abspath(os.path.join(current_dir, "..", "datasets"))
+# Resolve relative path to datasets (repo-relative loanshield/datasets/)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+DATASETS_DIR = os.path.abspath(os.path.join(current_dir, "..", "datasets"))
 
 @mcp.tool()
 def get_document_status(customer_id: str) -> Dict[str, Any]:
@@ -104,15 +104,54 @@ def get_employment_profile(customer_id: str) -> Dict[str, Any]:
     return {"error": f"Customer {customer_id} not found in employment database."}
 
 @mcp.tool()
-def send_notification(customer_id: str, decision: str, message: str) -> Dict[str, Any]:
-    """Simulates sending a Slack webhook or SMTP email dispatch for finalized decision.
+def send_notification(customer_id: str, decision: str, message: str, recipient_email: str = "") -> Dict[str, Any]:
+    """Sends a notification via SMTP email if configured, or falls back to mock simulation.
 
     Args:
         customer_id: The customer ID.
         decision: The finalized decision (AUTO_APPROVE, HUMAN_REVIEW, AUTO_REJECT).
-        message: The detailed notification letter content.
+        message: The detailed notification letter content (used as email body).
+        recipient_email: The recipient's email address.
     """
-    # Simply simulate notification dispatch
+    smtp_host = os.environ.get("SMTP_HOST")
+    smtp_port = os.environ.get("SMTP_PORT")
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_password = os.environ.get("SMTP_PASSWORD")
+
+    if smtp_host and smtp_port and smtp_user and smtp_password and recipient_email:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = f"LoanShield Credit Decision Notification - {decision}"
+            msg["From"] = smtp_user
+            msg["To"] = recipient_email
+
+            text_part = MIMEText(message, "plain")
+            msg.attach(text_part)
+
+            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, [recipient_email], msg.as_string())
+
+            return {
+                "status": "success",
+                "customer_id": customer_id,
+                "decision": decision,
+                "channel": "SMTP Email",
+                "delivered": True,
+                "recipient": recipient_email
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "customer_id": customer_id,
+                "decision": decision,
+                "channel": "SMTP Email",
+                "delivered": False,
+                "error": str(e)
+            }
+
+    # Fallback to mock simulation if SMTP not configured
     return {
         "status": "success",
         "customer_id": customer_id,

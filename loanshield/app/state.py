@@ -55,6 +55,7 @@ class LoanApplicationState(TypedDict, total=False):
     loan_amount: float
     purpose: str
     target_scenario: str
+    email: str
 
     # Redacted Fields (PII safe zone)
     redacted_name: str

@@ -214,6 +214,11 @@ async function loadBenchmarkTemplates() {
             `;
 
             card.addEventListener('click', () => {
+                // Reset UI state before loading new candidate data
+                activeSessionId = null;
+                currentAuditLength = 0;
+                resetWorkflowUI();
+
                 // Remove active class from others
                 document.querySelectorAll('.benchmark-card').forEach(el => el.classList.remove('active'));
                 card.classList.add('active');
@@ -231,6 +236,7 @@ async function loadBenchmarkTemplates() {
                 document.getElementById('loan_amount').value = profile.loan_amount;
                 document.getElementById('purpose').value = profile.purpose;
                 document.getElementById('target_scenario').value = profile.target_scenario;
+                document.getElementById('email').value = '';
 
                 logToTerminal(`[System] Loaded template for ${profile.name} (${profile.target_scenario})`);
             });
@@ -426,13 +432,35 @@ function displayWorkflowResults(state) {
         badge.className = `verdict-badge ${badgeClass}`;
     }
 
-    // 3. ECOA Notice Letter
+    // 3. Notification Dispatch Status
+    const notif = state.notification_result;
+    if (notif) {
+        const channel = notif.channel || 'Mock Dispatcher';
+        const recipient = notif.recipient || state.email || 'N/A';
+        const delivered = notif.delivered ? '✓ Delivered' : '✗ Failed';
+        logToTerminal(`[Notification] ${delivered} via ${channel} → ${recipient}`, delivered ? 'info' : 'error');
+    }
+
+    // 4. ECOA Notice Letter
     const ecoLetter = state.eco_letter || (state.explanation_result ? state.explanation_result.eco_letter : null);
     if (ecoLetter) {
         const letterPanel = document.getElementById('ecoa-section');
         const content = document.getElementById('ecoa-letter-content');
         
-        content.innerHTML = `<h3>Decision Notice Issued</h3>
+        const notifBanner = notif ? `
+            <div style="background: rgba(163,230,53,0.1); border: 1px solid rgba(163,230,53,0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+                <i class="fa-solid fa-bell" style="color: #A3E635;"></i>
+                <strong style="color: #A3E635;">Notification Dispatch</strong>
+                <span style="float: right; color: #A3E635;">${notif.delivered ? '✓ Delivered' : '✗ Failed'}</span>
+                <div style="margin-top: 6px; font-size: 0.9rem; color: #ccc;">
+                    Channel: ${notif.channel || 'Mock Dispatcher'} &nbsp;|&nbsp; 
+                    Recipient: ${notif.recipient || state.email || 'N/A'}
+                    ${notif.delivered && !notif.channel?.includes('SMTP') ? '<br><em style="color: #999;">(Mock mode — no real email sent. Configure SMTP env vars for actual delivery.)</em>' : ''}
+                </div>
+            </div>
+        ` : '';
+        
+        content.innerHTML = `${notifBanner}<h3>Decision Notice Issued</h3>
         <p style="white-space: pre-wrap;">${ecoLetter}</p>`;
         
         letterPanel.style.display = 'block';
@@ -492,7 +520,8 @@ async function handleFormSubmit(e) {
         declared_income_monthly: parseFloat(document.getElementById('declared_income_monthly').value),
         loan_amount: parseFloat(document.getElementById('loan_amount').value),
         purpose: document.getElementById('purpose').value,
-        target_scenario: document.getElementById('target_scenario').value || "Custom"
+        target_scenario: document.getElementById('target_scenario').value || "Custom",
+        email: document.getElementById('email').value
     };
 
     const apiKey = localStorage.getItem('gemini_api_key');
@@ -505,7 +534,7 @@ async function handleFormSubmit(e) {
     }
     payload.gemini_api_key = apiKey;
 
-    logToTerminal(`[System] Dispatching request for ${payload.name} (Amount: $${payload.loan_amount.toLocaleString()})`);
+    logToTerminal(`[System] Dispatching request for ${payload.name} (Amount: ₹${payload.loan_amount.toLocaleString()})`);
 
     try {
         // Step 1: Create local session
