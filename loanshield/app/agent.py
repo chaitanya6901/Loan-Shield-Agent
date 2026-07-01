@@ -111,6 +111,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
                 "fraud_reasons": [doc_status["error"]],
                 "audit_trail": audit_trail,
                 "name": payload.get("name", ""),
+                "email": payload.get("email", ""),
                 "composite_score": 0.0,
                 "credit_score_component": 0.0,
                 "dti_component": 0.0,
@@ -164,6 +165,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
                     "fraud_reasons": ["Missing required documents"],
                     "audit_trail": audit_trail,
                     "name": payload.get("name", ""),
+                    "email": payload.get("email", ""),
                     "composite_score": 0.0,
                     "credit_score_component": 0.0,
                     "dti_component": 0.0,
@@ -192,6 +194,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
             "customer_id": customer_id,
             "applicant_id": applicant_id,
             "name": payload.get("name", ""),
+            "email": payload.get("email", ""),
             "declared_income_monthly": float(payload.get("declared_income_monthly", 0)),
             "loan_amount": float(payload.get("loan_amount", 0)),
             "age": int(payload.get("age", 0)),
@@ -440,6 +443,7 @@ Format requirements:
 def notifier_node_func(ctx: Context, node_input: Any) -> Event:
     customer_id = ctx.state["customer_id"]
     decision = ctx.state["decision"]
+    email = ctx.state.get("email", "")
     
     explanation_res = ctx.state["explanation_result"]
     eco_letter = explanation_res.get("eco_letter", "")
@@ -452,7 +456,8 @@ def notifier_node_func(ctx: Context, node_input: Any) -> Event:
     resp = send_notification(
         customer_id=customer_id,
         decision=decision,
-        message=eco_letter
+        message=eco_letter,
+        recipient_email=email
     )
     
     audit_trail = ctx.state.get("audit_trail", [])
@@ -468,7 +473,8 @@ def notifier_node_func(ctx: Context, node_input: Any) -> Event:
         output={"status": "dispatched", "notification": resp},
         state={
             "eco_letter": eco_letter,
-            "audit_trail": audit_trail
+            "audit_trail": audit_trail,
+            "notification_result": resp
         }
     )
 

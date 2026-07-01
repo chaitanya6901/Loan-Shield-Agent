@@ -9,10 +9,7 @@ from app.agent import app as loanshield_app
 
 @pytest.mark.asyncio
 async def test_all_applicants():
-    csv_path = "/Users/rk/kaggle/Loan_Shield_CapStone_Project/datasets/main_applications_final.csv"
-    if not os.path.exists(csv_path):
-        # Fallback
-        csv_path = "../datasets/main_applications_final.csv"
+    csv_path = "../datasets/main_applications_final.csv"
         
     assert os.path.exists(csv_path), f"Dataset not found at {csv_path}"
     
