@@ -275,6 +275,26 @@ def fraud_analysis_node_func(ctx: Context, node_input: Any) -> Event:
 
 # 4. Risk Scorer Node function (joins outputs)
 def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
+    if ctx.state.get("fraud_flag", False):
+        return Event(
+            output={"decision": "AUTO_REJECT", "composite_score": 0.0},
+            route="auto",
+            state={
+                "composite_score": 0.0,
+                "decision": "AUTO_REJECT",
+                "credit_score_component": 0.0,
+                "dti_component": 0.0,
+                "cash_flow_component": 0.0,
+                "stability_modifier": 1.0,
+                "audit_trail": ctx.state.get("audit_trail", []) + [{
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "node_name": "risk_scoring_node",
+                    "severity": "CRITICAL",
+                    "message": f"Fraud flag active — risk scoring bypassed. Reasons: {ctx.state.get('fraud_reasons', [])}",
+                    "details": {}
+                }]
+            }
+        )
     fin_data = ctx.state["financial_profile"]
     fraud_data = ctx.state
     
