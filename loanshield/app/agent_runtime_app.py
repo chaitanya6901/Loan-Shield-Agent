@@ -38,8 +38,10 @@ class AgentEngineApp(AdkApp):
         logging.basicConfig(level=logging.INFO)
         logging_client = google_cloud_logging.Client()
         self.logger = logging_client.logger(__name__)
-        if gemini_location:
-            os.environ["GOOGLE_CLOUD_LOCATION"] = gemini_location
+        # This is the Vertex AI Agent Engine hosting region, unrelated to the
+        # Groq LLM backend used by the agent's LlmAgent nodes (see app/agent.py).
+        if agent_engine_location:
+            os.environ["GOOGLE_CLOUD_LOCATION"] = agent_engine_location
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
         """Collect and log feedback."""
@@ -57,7 +59,7 @@ class AgentEngineApp(AdkApp):
         return self
 
 
-gemini_location = os.environ.get("GOOGLE_CLOUD_LOCATION")
+agent_engine_location = os.environ.get("GOOGLE_CLOUD_LOCATION")
 logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 agent_runtime = AgentEngineApp(
     app=adk_app,

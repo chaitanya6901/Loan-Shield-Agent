@@ -53,6 +53,16 @@ resource "google_vertex_ai_reasoning_engine" "app" {
         name  = "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY"
         value = "true"
       }
+
+      env {
+        name  = "GROQ_API_KEY"
+        value = var.groq_api_key
+      }
+
+      env {
+        name  = "GROQ_MODEL"
+        value = "llama-3.3-70b-versatile"
+      }
     }
 
     source_code_spec {
