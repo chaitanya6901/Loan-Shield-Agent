@@ -1174,39 +1174,5 @@
       }
     ],
     "missing_requirements": []
-  },
-  "CU-055": {
-    "customer_id": "CU-055",
-    "document_vault_status": "COMPLETE",
-    "verified_files": [
-      {
-        "type": "Government_ID",
-        "status": "VERIFIED",
-        "extracted_name": "Arjun Mehta"
-      },
-      {
-        "type": "Bank_Statement",
-        "status": "VERIFIED",
-        "statement_period_days": 90
-      }
-    ],
-    "missing_requirements": []
-  },
-  "CU-056": {
-    "customer_id": "CU-056",
-    "document_vault_status": "COMPLETE",
-    "verified_files": [
-      {
-        "type": "Government_ID",
-        "status": "VERIFIED",
-        "extracted_name": "Priya Sharma"
-      },
-      {
-        "type": "Bank_Statement",
-        "status": "VERIFIED",
-        "statement_period_days": 90
-      }
-    ],
-    "missing_requirements": []
   }
 }
