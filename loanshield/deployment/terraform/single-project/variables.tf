@@ -29,6 +29,12 @@ variable "region" {
   default     = "us-east1"
 }
 
+variable "groq_api_key" {
+  type        = string
+  description = "Groq API key used by the deployed agent to call Groq-hosted models. Pass via TF_VAR_groq_api_key or a secrets-managed .tfvars file, never commit it."
+  sensitive   = true
+}
+
 variable "telemetry_logs_filter" {
   type        = string
   description = "Log Sink filter for capturing telemetry data. Captures logs with the `traceloop.association.properties.log_type` attribute set to `tracing`."

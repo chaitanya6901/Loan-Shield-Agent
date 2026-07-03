@@ -70,9 +70,9 @@ If you don't have it, download and install it from the link provided to you.
 
 ---
 
-### 2. Get a Gemini API Key
+### 2. Get a Groq API Key
 
-Go to → https://aistudio.google.com/apikey
+Go to → https://console.groq.com/keys
 
 Click **Create API Key** → copy it → keep it safe.
 You'll paste it into a `.env` file during setup. Never share it.
@@ -263,14 +263,14 @@ Switch to a different model directly in Antigravity IDE:
 ---
 
 **Q: The agent itself is running out of API quota during testing — how do I change the model the agent uses?**
-By default, the generated project uses `gemini-2.5-flash` (the older `gemini-1.5-*` models are retired and now return 404 errors, so they can't be used). If you hit free-tier limits, `gemini-2.5-flash-lite` has higher daily request limits.
+By default, the generated project uses `llama-3.3-70b-versatile` on Groq. If you hit rate limits, `llama-3.1-8b-instant` is a smaller/faster model with higher throughput limits.
 If you want to use a different model for your agent:
   1. Open your `.env` file inside your project folder.
-  2. Add or modify the `GEMINI_MODEL` environment variable, e.g.:
+  2. Add or modify the `GROQ_MODEL` environment variable, e.g.:
      ```
-     GEMINI_MODEL=gemini-2.5-flash-lite
+     GROQ_MODEL=llama-3.1-8b-instant
      ```
-  3. The agent's `config.py` is configured to dynamically read this value and switch the model immediately without any code edits.
+  3. The agent's `config.py` is configured to dynamically read this value and switch the model immediately without any code edits. It's passed to ADK's `LiteLlm` wrapper as `groq/<model>` under the hood.
 
 ---
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from google.adk.agents import LlmAgent
 from google.adk.apps import App, ResumabilityConfig
-from google.adk.models import Gemini
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.workflow import Workflow, JoinNode, FunctionNode, START
 from google.adk.events.event import Event
 from google.adk.events.request_input import RequestInput
@@ -16,7 +16,8 @@ from google.genai import types as genai_types
 
 from app.config import config
 from app.state import VerifiedFile, DocumentStatus, CreditBureauProfile, BankingProfile, EmploymentProfile, AuditEvent
-from app.mcp_server import get_document_status, get_credit_profile, get_banking_profile, get_employment_profile, send_notification
+from app.mcp_server import get_document_status, get_credit_profile, get_banking_profile, get_employment_profile, \
+    send_notification
 
 # Import our custom skills
 from app.skills.pii_redactor import pii_redactor_skill
@@ -27,22 +28,17 @@ from app.skills.risk_scoring import risk_scoring_skill
 from app.skills.fraud_detection import fraud_detection_skill
 from app.skills.explanation import generate_ecoa_letter
 
-# Pydantic Schemas for agent structured inputs/outputs
-class FinancialAnalysisOutput(BaseModel):
-    credit_score: int = Field(description="FICO credit score from bureau")
-    credit_history_length_months: int = Field(description="Credit history length in months")
-    delinquencies: int = Field(description="Number of delinquencies on file")
-    total_tradelines: int = Field(description="Total number of tradelines")
-    monthly_debt_obligations: float = Field(description="Monthly debt obligations")
-    average_monthly_deposits: float = Field(description="Average monthly deposits")
-    average_monthly_withdrawals: float = Field(description="Average monthly withdrawals")
-    current_balance: float = Field(description="Current account balance")
-    employer_name: str = Field(description="Name of employer")
-    employment_status: str = Field(description="Employment status")
-    tenure_months: int = Field(description="Tenure at current job in months")
 
+# Pydantic Schemas for agent structured inputs/outputs
 class ExplanationOutput(BaseModel):
     eco_letter: str = Field(description="The formal credit decision notification letter following ECOA guidelines.")
+
+
+# LiteLlm routes ADK's LlmAgent through Groq's OpenAI-compatible API.
+# Requires GROQ_API_KEY to be set in the environment.
+def groq_model() -> LiteLlm:
+    return LiteLlm(model=f"groq/{config.model}")
+
 
 # 1. Gatekeeper Node function (with HITL check)
 async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[Event, None]:
@@ -62,10 +58,13 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
         payload = node_input
     else:
         payload = dict(node_input)
-        
+
     applicant_id = payload.get("applicant_id", "APP-UNKNOWN")
     customer_id = payload.get("customer_id", "CU-UNKNOWN")
-    
+    # Computed once here (not left for the LLM to guess) so the notification
+    # letter always shows the real date the decision was processed.
+    decision_date = datetime.datetime.now().strftime("%B %d, %Y")
+
     # Audit log
     audit_trail = [{
         "timestamp": datetime.datetime.now().isoformat(),
@@ -74,7 +73,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
         "message": f"Initalized processing for application {applicant_id} / customer {customer_id}",
         "details": {}
     }]
-    
+
     # 1a. Redact PII
     redacted = pii_redactor_skill(
         name=payload.get("name", ""),
@@ -83,7 +82,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
         phone_number=str(payload.get("phone_number", "")),
         home_address=payload.get("home_address", "")
     )
-    
+
     audit_trail.append({
         "timestamp": datetime.datetime.now().isoformat(),
         "node_name": "gatekeeper_node",
@@ -91,7 +90,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
         "message": "PII fields redacted successfully.",
         "details": {}
     })
-    
+
     # 1b. Fetch document status from MCP mock database
     doc_status = get_document_status(customer_id)
     if "error" in doc_status:
@@ -117,13 +116,14 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
                 "dti_component": 0.0,
                 "cash_flow_component": 0.0,
                 "stability_modifier": 1.0,
+                "decision_date": decision_date,
                 **redacted
             }
         )
         return
 
     vault_status = doc_status.get("document_vault_status", "INCOMPLETE")
-    
+
     # 1c. Document HITL Check
     if vault_status == "INCOMPLETE":
         # Check if we have received resume overrides
@@ -141,11 +141,11 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
                 message=f"Missing documents: {', '.join(doc_status.get('missing_requirements', []))}. Respond with RESUME or REJECT."
             )
             return
-            
+
         # We got resume input!
         override_val = ctx.resume_inputs["document_override"]
         override = override_val.get("value", "RESUME") if isinstance(override_val, dict) else str(override_val)
-        
+
         audit_trail = ctx.state.get("audit_trail", audit_trail)
         audit_trail.append({
             "timestamp": datetime.datetime.now().isoformat(),
@@ -154,7 +154,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
             "message": f"Underwriter provided document override action: {override}",
             "details": {}
         })
-        
+
         if override.upper() == "REJECT":
             yield Event(
                 output={"decision": "AUTO_REJECT", "reasons": ["Missing required documents rejected by underwriter"]},
@@ -171,6 +171,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
                     "dti_component": 0.0,
                     "cash_flow_component": 0.0,
                     "stability_modifier": 1.0,
+                    "decision_date": decision_date,
                     **redacted
                 }
             )
@@ -200,28 +201,77 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
             "age": int(payload.get("age", 0)),
             "documents": doc_status,
             "audit_trail": audit_trail,
+            "decision_date": decision_date,
             **redacted
         }
     )
 
-# 2. Financial Analyst Agent (LlmAgent)
-financial_analysis_node = LlmAgent(
-    name="financial_analysis_node",
-    model=Gemini(model=config.model),
-    instruction="""You are a senior Financial Analyst Agent.
-The customer ID to check is: {customer_id}.
-Your job is to look up the customer's financial profiles.
-Use the mock services tools (which retrieve info from local CSV datasets) to get the following data:
-1. Credit profile details (credit score, history, delinquencies, tradelines, monthly debt obligations).
-2. Banking details (deposits, withdrawals, balances).
-3. Employment details (employer, status, tenure months).
 
-You MUST output the exact retrieved metrics matching the provided schema. Do not make up or guess any numbers.
-""",
-    tools=[get_credit_profile, get_banking_profile, get_employment_profile],
-    output_schema=FinancialAnalysisOutput,
-    output_key="financial_profile",
+# 2. Financial Analyst Node function
+# NOTE: This was originally an LlmAgent that called the lookup tools and asked the
+# model to echo the numbers back verbatim ("Do not make up or guess any numbers").
+# That combo of tools + a structured output_schema in one call isn't just
+# provider-specific flakiness — Groq rejects it outright for tool-calling models
+# (BadRequestError: "json mode cannot be combined with tool/function calling").
+# Since the values must be reproduced exactly anyway, there's no upside to routing
+# them through an LLM at all: this does the same deterministic lookups fraud_analysis_node
+# does below, with zero risk of transcription errors and no dependency on which
+# Groq model supports which combo of features.
+def financial_analysis_node_func(ctx: Context, node_input: Any) -> Event:
+    customer_id = ctx.state["customer_id"]
+
+    credit = get_credit_profile(customer_id)
+    banking = get_banking_profile(customer_id)
+    employment = get_employment_profile(customer_id)
+
+    audit_trail = ctx.state.get("audit_trail", [])
+    errors = [d["error"] for d in (credit, banking, employment) if "error" in d]
+    if errors:
+        audit_trail.append({
+            "timestamp": datetime.datetime.now().isoformat(),
+            "node_name": "financial_analysis_node",
+            "severity": "CRITICAL",
+            "message": f"Financial profile lookup failed: {'; '.join(errors)}",
+            "details": {}
+        })
+    else:
+        audit_trail.append({
+            "timestamp": datetime.datetime.now().isoformat(),
+            "node_name": "financial_analysis_node",
+            "severity": "INFO",
+            "message": "Financial profile (credit, banking, employment) retrieved successfully.",
+            "details": {}
+        })
+
+    financial_profile = {
+        "credit_score": credit.get("credit_score", 0),
+        "credit_history_length_months": credit.get("credit_history_length_months", 0),
+        "delinquencies": credit.get("delinquencies", 0),
+        "total_tradelines": credit.get("total_tradelines", 0),
+        "monthly_debt_obligations": credit.get("monthly_debt_obligations", 0.0),
+        "average_monthly_deposits": banking.get("average_monthly_deposits", 0.0),
+        "average_monthly_withdrawals": banking.get("average_monthly_withdrawals", 0.0),
+        "current_balance": banking.get("current_balance", 0.0),
+        "employer_name": employment.get("employer_name", ""),
+        "employment_status": employment.get("employment_status", ""),
+        "tenure_months": employment.get("tenure_months", 0),
+    }
+
+    return Event(
+        output=financial_profile,
+        state={
+            "financial_profile": financial_profile,
+            "audit_trail": audit_trail
+        }
+    )
+
+
+financial_analysis_node = FunctionNode(
+    func=financial_analysis_node_func,
+    rerun_on_resume=False,
+    name="financial_analysis_node"
 )
+
 
 # 3. Fraud & Compliance Node function
 def fraud_analysis_node_func(ctx: Context, node_input: Any) -> Event:
@@ -229,12 +279,12 @@ def fraud_analysis_node_func(ctx: Context, node_input: Any) -> Event:
     age = ctx.state["age"]
     loan_amount = ctx.state["loan_amount"]
     declared_income = ctx.state["declared_income_monthly"]
-    
+
     # Query MCP directly for rules check
     credit = get_credit_profile(customer_id)
     emp = get_employment_profile(customer_id)
     banking = get_banking_profile(customer_id)
-    
+
     fraud_res = fraud_detection_skill(
         age=age,
         loan_amount=loan_amount,
@@ -244,7 +294,7 @@ def fraud_analysis_node_func(ctx: Context, node_input: Any) -> Event:
         declared_income_monthly=declared_income,
         verified_income=banking.get("average_monthly_deposits", 0.0)
     )
-    
+
     audit_trail = ctx.state.get("audit_trail", [])
     if fraud_res["fraud_flag"]:
         for reason in fraud_res["fraud_reasons"]:
@@ -263,7 +313,7 @@ def fraud_analysis_node_func(ctx: Context, node_input: Any) -> Event:
             "message": "All deterministic fraud/compliance checks passed.",
             "details": {}
         })
-        
+
     return Event(
         output=fraud_res,
         state={
@@ -272,6 +322,7 @@ def fraud_analysis_node_func(ctx: Context, node_input: Any) -> Event:
             "audit_trail": audit_trail
         }
     )
+
 
 # 4. Risk Scorer Node function (joins outputs)
 def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
@@ -297,25 +348,25 @@ def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
         )
     fin_data = ctx.state["financial_profile"]
     fraud_data = ctx.state
-    
+
     declared_income = ctx.state["declared_income_monthly"]
     loan_amount = ctx.state["loan_amount"]
-    
+
     # 4a. Verify Income Stability
     inc_verify = income_verify_skill(
         declared_income_monthly=declared_income,
         average_monthly_deposits=fin_data.get("average_monthly_deposits", 0.0)
     )
-    
+
     # 4b. Calculate DTI ratio
     dti_res = dti_calculator_skill(
         monthly_debt_obligations=fin_data.get("monthly_debt_obligations", 0.0),
         verified_income=fin_data.get("average_monthly_deposits", 0.0)
     )
-    
+
     # 4c. Calculate stability modifier
     stability = stability_modifier_skill(tenure_months=fin_data.get("tenure_months", 0))
-    
+
     # 4d. Compute composite risk score
     score_res = risk_scoring_skill(
         credit_score=fin_data.get("credit_score", 0),
@@ -327,7 +378,7 @@ def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
         average_monthly_withdrawals=fin_data.get("average_monthly_withdrawals", 0.0),
         stability_modifier=stability["stability_modifier"]
     )
-    
+
     # Update fraud flag with income anomaly if any
     fraud_flag = fraud_data.get("fraud_flag", False)
     fraud_reasons = fraud_data.get("fraud_reasons", [])
@@ -335,19 +386,19 @@ def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
         fraud_flag = True
         if "Income Mismatch Anomaly" not in fraud_reasons:
             fraud_reasons.append("Income Mismatch Anomaly")
-            
+
     composite_score = score_res["composite_score"]
-    
+
     # Apply thin credit history penalty to align thin credit profiles with the 40-69 range
     credit_history = fin_data.get("credit_history_length_months", 0)
     if credit_history < 6:
         composite_score = max(0.0, composite_score - 5.0)
-        
+
     # Apply high DTI penalty to align high DTI scenarios with the < 40 range
     calculated_dti = dti_res["calculated_dti"]
     if calculated_dti > 0.45:
         composite_score = max(0.0, composite_score - 10.0)
-    
+
     # Underwriting decision routing
     if fraud_flag or composite_score < 40.0:
         decision = "AUTO_REJECT"
@@ -358,7 +409,7 @@ def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
     else:
         decision = "AUTO_APPROVE"
         route = "auto"
-        
+
     audit_trail = ctx.state.get("audit_trail", [])
     audit_trail.append({
         "timestamp": datetime.datetime.now().isoformat(),
@@ -371,7 +422,7 @@ def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
             "cash_flow_component": score_res["cash_flow_component"]
         }
     })
-    
+
     return Event(
         output={"decision": decision, "composite_score": composite_score},
         route=route,
@@ -390,10 +441,11 @@ def risk_scoring_node_func(ctx: Context, node_input: Any) -> Event:
         }
     )
 
+
 # 5. Human Underwriter Override Node (HITL check)
 async def human_underwriter_hitl_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[Event, None]:
     audit_trail = ctx.state.get("audit_trail", [])
-    
+
     if not ctx.resume_inputs or "underwriter_override" not in ctx.resume_inputs:
         audit_trail.append({
             "timestamp": datetime.datetime.now().isoformat(),
@@ -404,16 +456,16 @@ async def human_underwriter_hitl_node_func(ctx: Context, node_input: Any) -> Asy
         })
         ctx.state["audit_trail"] = audit_trail
         yield RequestInput(
-            interrupt_id="underwriter_override", 
+            interrupt_id="underwriter_override",
             message=f"Application in thin-credit zone (Score: {ctx.state.get('composite_score', 0.0):.1f}). Approve or Reject."
         )
         return
-        
+
     override_val = ctx.resume_inputs["underwriter_override"]
     override = override_val.get("value", "APPROVE") if isinstance(override_val, dict) else str(override_val)
-    
+
     decision = "AUTO_APPROVE" if override.upper() == "APPROVE" else "AUTO_REJECT"
-    
+
     audit_trail.append({
         "timestamp": datetime.datetime.now().isoformat(),
         "node_name": "human_underwriter_hitl_node",
@@ -421,7 +473,7 @@ async def human_underwriter_hitl_node_func(ctx: Context, node_input: Any) -> Asy
         "message": f"Underwriter override action submitted: {override}. Finalizing application as {decision}.",
         "details": {}
     })
-    
+
     yield Event(
         output={"decision": decision, "underwriter_override": override},
         state={
@@ -431,27 +483,32 @@ async def human_underwriter_hitl_node_func(ctx: Context, node_input: Any) -> Asy
         }
     )
 
+
 # 6. Explanation & Output Node (LlmAgent)
 explanation_node = LlmAgent(
     name="explanation_node",
-    model=Gemini(model=config.model),
+    model=groq_model(),
     instruction="""You are a senior Compliance Officer Agent at LoanShield.
 Your job is to write a formal credit decision notification letter.
 
-Context Details:
+Context Details (for your reasoning only — see Format requirements below on what may appear in the letter):
 - Customer Name: {redacted_name}
 - Final decision: {decision}
+- Letter date: {decision_date}
 - Risk score: {composite_score}
 - Credit FICO component: {credit_score_component}
-- DTI affordability component: {dti_component}
+- Debt-to-income affordability component: {dti_component}
 - Cash flow buffer component: {cash_flow_component}
 - Stability modifiers: {stability_modifier}
 - Fraud/Anomalies Detected: {fraud_flag}
 - Compliance Reason(s): {fraud_reasons}
 
 Format requirements:
+- Head the letter with the date, using the exact value given in "Letter date" above. Never invent or reuse a different date.
 - If approved, write a welcoming and congratulatory notification detailing that they passed our risk matrices.
-- If declined, cite the specific reasons clearly in alignment with Section 701(a) of the Equal Credit Opportunity Act (ECOA). Address the reasons (e.g. low FICO, high DTI, cash flow insolvency, or synthetic/fraud flag triggers).
+- If declined, cite the specific reasons clearly in alignment with Section 701(a) of the Equal Credit Opportunity Act (ECOA). Address the reasons (e.g. low credit score, high debt-to-income ratio, cash flow insolvency, or synthetic/fraud flag triggers) in plain qualitative language.
+- Do NOT include any numeric scores, percentages, or raw metric values anywhere in the letter (no composite score, component scores, stability modifier value, etc.) — describe the reasoning qualitatively only.
+- Do NOT use abbreviations or short forms for financial terms — spell them out in full every time (e.g. write "debt-to-income ratio" in full, never "DTI"; write "Equal Credit Opportunity Act (ECOA)" in full on first use).
 - DO NOT use the customer's actual SSN, phone number, or home address. Reference the redacted fields.
 - Put your complete generated letter inside the 'eco_letter' field.
 """,
@@ -459,27 +516,28 @@ Format requirements:
     output_key="explanation_result",
 )
 
+
 # 7. Notification Node (FunctionNode)
 def notifier_node_func(ctx: Context, node_input: Any) -> Event:
     customer_id = ctx.state["customer_id"]
     decision = ctx.state["decision"]
     email = ctx.state.get("email", "")
-    
+
     explanation_res = ctx.state["explanation_result"]
     eco_letter = explanation_res.get("eco_letter", "")
-    
+
     # Restore actual applicant name in the notification letter for personalized dispatch
     applicant_name = ctx.state.get("name", "")
     if applicant_name and "[REDACTED_NAME]" in eco_letter:
         eco_letter = eco_letter.replace("[REDACTED_NAME]", applicant_name)
-        
+
     resp = send_notification(
         customer_id=customer_id,
         decision=decision,
         message=eco_letter,
         recipient_email=email
     )
-    
+
     audit_trail = ctx.state.get("audit_trail", [])
     audit_trail.append({
         "timestamp": datetime.datetime.now().isoformat(),
@@ -488,7 +546,7 @@ def notifier_node_func(ctx: Context, node_input: Any) -> Event:
         "message": f"Notification successfully dispatched via {resp['channel']}",
         "details": resp
     })
-    
+
     return Event(
         output={"status": "dispatched", "notification": resp},
         state={
@@ -498,11 +556,13 @@ def notifier_node_func(ctx: Context, node_input: Any) -> Event:
         }
     )
 
+
 # Wrap callable functions as FunctionNodes with correct rerun_on_resume settings
 gatekeeper_node = FunctionNode(func=gatekeeper_node_func, rerun_on_resume=True, name="gatekeeper_node")
 fraud_analysis_node = FunctionNode(func=fraud_analysis_node_func, rerun_on_resume=False, name="fraud_analysis_node")
 risk_scoring_node = FunctionNode(func=risk_scoring_node_func, rerun_on_resume=False, name="risk_scoring_node")
-human_underwriter_hitl_node = FunctionNode(func=human_underwriter_hitl_node_func, rerun_on_resume=True, name="human_underwriter_hitl_node")
+human_underwriter_hitl_node = FunctionNode(func=human_underwriter_hitl_node_func, rerun_on_resume=True,
+                                           name="human_underwriter_hitl_node")
 notifier_node = FunctionNode(func=notifier_node_func, rerun_on_resume=False, name="notifier_node")
 
 # Create join node
@@ -512,26 +572,26 @@ join = JoinNode(name="merge_analysis")
 edges = [
     # 1. Start application intake
     ('START', gatekeeper_node),
-    
+
     # 2. Gatekeeper branches
     (gatekeeper_node, {
         "incomplete_docs_reject": explanation_node,
         "complete_docs": (financial_analysis_node, fraud_analysis_node)
     }),
-    
+
     # 3. Parallel analysis branches merge into join, then risk scoring
     ((financial_analysis_node, fraud_analysis_node), join),
     (join, risk_scoring_node),
-    
+
     # 4. Routing based on composite scoring (converging routes use the single "auto" route to prevent duplicate edges)
     (risk_scoring_node, {
         "auto": explanation_node,
         "human_review": human_underwriter_hitl_node
     }),
-    
+
     # 5. Review node routes to explanation
     (human_underwriter_hitl_node, explanation_node),
-    
+
     # 6. Final dispatch
     (explanation_node, notifier_node),
 ]

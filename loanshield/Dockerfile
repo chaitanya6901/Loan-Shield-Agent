@@ -24,8 +24,7 @@ COPY datasets/ datasets/
 
 # Set up environment variables
 ENV PATH="/app/.venv/bin:$PATH"
-ENV GOOGLE_GENAI_USE_VERTEXAI="False"
-ENV GEMINI_MODEL="gemini-2.5-flash"
+ENV GROQ_MODEL="llama-3.3-70b-versatile"
 
 # Expose agent engine port
 EXPOSE 8080

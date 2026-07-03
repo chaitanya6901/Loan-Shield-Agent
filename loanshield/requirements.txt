@@ -1,7 +1,8 @@
 # Lightweight Runtime Requirements for Vercel Deployment
-# (Letting google-adk automatically resolve the matching google-genai version)
+# (google-adk still provides the agent/workflow framework; LLM calls are
+# routed to Groq through ADK's LiteLlm wrapper instead of the native Gemini model)
 google-adk>=2.0.0,<3.0.0
-opentelemetry-instrumentation-google-genai>=0.1.0
+litellm>=1.55.0
 mcp>=1.0.0,<2.0.0
 gcsfs>=2024.11.0
 fastapi>=0.110.0
