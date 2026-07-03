@@ -575,6 +575,17 @@ async function handleFormSubmit(e) {
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Verify Loan Approval Status`;
                 }
+            } else if (data.type === 'retry') {
+                logToTerminal(`[Retry] ${data.message}`, 'warn');
+            } else if (data.type === 'quota_error') {
+                logToTerminal(`[Rate Limit] ${data.message}`, 'warn');
+                const badge = document.getElementById('verdict-badge');
+                badge.innerText = 'QUOTA LIMIT';
+                badge.className = 'verdict-badge review';
+                document.getElementById('metric-score').innerText = '—';
+                sse.close();
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Verify Loan Approval Status`;
             } else if (data.type === 'error') {
                 logToTerminal(`[System Error] ${data.message}`, 'error');
                 sse.close();

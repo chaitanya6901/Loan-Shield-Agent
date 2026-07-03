@@ -78,48 +78,71 @@ async def run_workflow(session_id: str):
     session_info["adk_session_id"] = adk_session.id
 
     async def event_generator():
-        try:
-            payload_str = json.dumps(payload)
-            content = types.Content(role="user", parts=[types.Part.from_text(text=payload_str)])
-            
-            # Run workflow in memory
-            async for event in runner.run_async(
-                user_id="test_user",
-                session_id=adk_session.id,
-                new_message=content
-            ):
-                # Fetch current state of session to stream progress
-                session_obj = await runner.session_service.get_session(
-                    app_name="app", user_id="test_user", session_id=adk_session.id
-                )
-                
-                # Check if this event is an interrupt request using ADK helpers
-                is_interrupted = has_request_input_function_call(event)
-                interrupt_id = None
-                interrupt_msg = None
-                
-                if is_interrupted:
-                    interrupt_ids = get_request_input_interrupt_ids(event)
-                    interrupt_id = interrupt_ids[0] if interrupt_ids else None
-                    session_info["active_interrupt_id"] = interrupt_id
-                    
-                    # Extract message from the function call args
-                    if event.content and event.content.parts:
-                        for part in event.content.parts:
-                            if part.function_call and part.function_call.name == REQUEST_INPUT_FUNCTION_CALL_NAME:
-                                interrupt_msg = part.function_call.args.get("message") if part.function_call.args else None
+        nonlocal adk_session
+        max_retries = 3
+        backoff_base = 2
 
-                yield f"data: {json.dumps({
-                    'type': 'event',
-                    'state': session_obj.state,
-                    'is_interrupted': is_interrupted,
-                    'interrupt_id': interrupt_id,
-                    'interrupt_message': interrupt_msg
-                })}\n\n"
-                await asyncio.sleep(0.1)
-                
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        for attempt in range(1, max_retries + 1):
+            try:
+                if attempt > 1:
+                    adk_session = await runner.session_service.create_session(
+                        app_name="app", user_id="test_user"
+                    )
+                    session_info["adk_session_id"] = adk_session.id
+
+                payload_str = json.dumps(payload)
+                content = types.Content(role="user", parts=[types.Part.from_text(text=payload_str)])
+
+                async for event in runner.run_async(
+                    user_id="test_user",
+                    session_id=adk_session.id,
+                    new_message=content
+                ):
+                    session_obj = await runner.session_service.get_session(
+                        app_name="app", user_id="test_user", session_id=adk_session.id
+                    )
+
+                    is_interrupted = has_request_input_function_call(event)
+                    interrupt_id = None
+                    interrupt_msg = None
+
+                    if is_interrupted:
+                        interrupt_ids = get_request_input_interrupt_ids(event)
+                        interrupt_id = interrupt_ids[0] if interrupt_ids else None
+                        session_info["active_interrupt_id"] = interrupt_id
+
+                        if event.content and event.content.parts:
+                            for part in event.content.parts:
+                                if part.function_call and part.function_call.name == REQUEST_INPUT_FUNCTION_CALL_NAME:
+                                    interrupt_msg = part.function_call.args.get("message") if part.function_call.args else None
+
+                    yield f"data: {json.dumps({
+                        'type': 'event',
+                        'state': session_obj.state,
+                        'is_interrupted': is_interrupted,
+                        'interrupt_id': interrupt_id,
+                        'interrupt_message': interrupt_msg
+                    })}\n\n"
+                    await asyncio.sleep(0.1)
+
+                break
+
+            except Exception as e:
+                estr = str(e)
+                exc_type = type(e).__name__
+
+                if "ResourceExhausted" in exc_type or "429" in estr or "RESOURCE_EXHAUSTED" in estr:
+                    yield f"data: {json.dumps({'type': 'quota_error', 'message': 'API quota limit reached. Please wait 60 seconds and try again.'})}\n\n"
+                    break
+
+                is_unavailable = "UNAVAILABLE" in estr or "503" in estr or "ServiceUnavailable" in exc_type or "ServerError" in exc_type
+                if is_unavailable and attempt < max_retries:
+                    wait = backoff_base ** attempt
+                    yield f"data: {json.dumps({'type': 'retry', 'message': f'Service temporarily unavailable. Retrying in {wait}s (attempt {attempt}/{max_retries})...'})}\n\n"
+                    await asyncio.sleep(wait)
+                else:
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'[{exc_type}] {estr}'})}\n\n"
+                    break
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
