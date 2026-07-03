@@ -1,12 +1,14 @@
 from typing import Dict, Any, List
+import datetime
+
 
 def generate_ecoa_letter(
-    name: str,
-    decision: str,
-    composite_score: float,
-    credit_score: int,
-    calculated_dti: float,
-    fraud_reasons: List[str]
+        name: str,
+        decision: str,
+        composite_score: float,
+        credit_score: int,
+        calculated_dti: float,
+        fraud_reasons: List[str]
 ) -> str:
     """Generates an ECOA-aligned notice letter.
 
@@ -50,7 +52,7 @@ def generate_ecoa_letter(
                 reasons.append(f"High Debt-to-Income ratio ({calculated_dti * 100:.1f}%)")
             if composite_score < 40:
                 reasons.append(f"Composite risk score ({composite_score:.1f}/100) below underwriting guidelines")
-            
+
             if reasons:
                 reasons_text = "\n- " + "\n- ".join(reasons)
             else:
@@ -69,7 +71,7 @@ def generate_ecoa_letter(
         f"──────────────────────────────────────────────────\n"
         f"Applicant: {name}\n"
         f"Decision: {status}\n"
-        f"Date: 2026-06-29\n"
+        f"Date: {datetime.datetime.now().strftime('%B %d, %Y')}\n"
         f"──────────────────────────────────────────────────\n\n"
         f"Dear {name},\n\n"
         f"{body}\n\n"

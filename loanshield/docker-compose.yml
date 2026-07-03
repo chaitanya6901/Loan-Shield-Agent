@@ -9,9 +9,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - GEMINI_MODEL=gemini-2.5-flash
-      - GOOGLE_GENAI_USE_VERTEXAI=False
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GROQ_MODEL=llama-3.3-70b-versatile
+      - GROQ_API_KEY=${GROQ_API_KEY}
     volumes:
       - ./datasets:/app/datasets
     restart: unless-stopped
