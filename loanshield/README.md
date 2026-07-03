@@ -8,26 +8,7 @@ LoanShield is an enterprise-grade automated lending decision platform built on G
 
 The LoanShield processing pipeline is structured as a LangGraph state workflow:
 
-```
-                  [ START ]
-                      │
-                      ▼
-             [ gatekeeper_node ] ──(Incomplete Docs)──► [ explanation_node ]
-                      │ (Complete Docs)                         ▲
-                      ▼                                         │
-             ┌────────┴────────┐                                │
-             ▼                 ▼                                │
-    [ financial_analysis ] [ fraud_analysis ]                   │
-             └────────┬────────┘                                │
-                      ▼                                         │
-               [ JoinNode ]                                     │
-                      │                                         │
-                      ▼                                         │
-             [ risk_scoring ] ────(Auto Reject/Approve)─────────┤
-                      │ (Human Review / Escalation)             │
-                      ▼                                         │
-        [ human_underwriter_hitl ] ─────────────────────────────┘
-```
+![Master Architecture](docs/images/master_architecture.png)
 
 ---
 
@@ -144,12 +125,6 @@ We built a custom, high-fidelity web gateway interface for LoanShield, replacing
 ---
 
 ## 📸 Web UI Execution Screenshots
-
-### 1. Loan Shield Enter Gemini API Key (Security & Configuration)
-![Enter Gemini API Key prompt](docs/images/api_key_prompt.png)
-*When accessing the portal for the first time, users are presented with this sleek dark glassmorphism modal to enter their **Gemini API Key** before proceeding. This key is stored securely in the browser's `localStorage` and sent dynamically for underwriting operations, removing any dependency on server-side secrets when hosted in cloud environments like Vercel.*
-
----
 
 ### 2. Loan Shield Human in loop Approval
 ![Human in Loop Approval Escalation](docs/images/hitl_approval_pending.png)
