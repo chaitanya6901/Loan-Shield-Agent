@@ -19,7 +19,7 @@
 
     <!-- Main App Container -->
     <div class="app-container">
-        
+
         <!-- Header -->
         <header class="app-header">
             <div class="logo-area">
@@ -28,8 +28,7 @@
             </div>
             <div class="header-status" style="display: flex; align-items: center; gap: 10px;">
                 <span class="status-indicator online"></span>
-                <span class="status-text">DECIZION ENGINE LOCAL GATEWAY</span>
-                <button id="btnChangeKey" class="glass-btn" style="font-size: 0.75rem; padding: 4px 10px; margin-left: 10px; border-color: rgba(163,230,53,0.3); cursor: pointer;"><i class="fa-solid fa-key"></i> API Key</button>
+                <span class="status-text">DECISION ENGINE LOCAL GATEWAY</span>
             </div>
         </header>
 
@@ -46,7 +45,7 @@
 
         <!-- Middle Flex Body -->
         <main class="main-content">
-            
+
             <!-- Left Side: Form Controls -->
             <section class="form-section glassy-panel">
                 <h2 class="panel-title"><i class="fa-solid fa-file-invoice-dollar"></i> Loan Application Form</h2>
@@ -210,7 +209,7 @@
 
         <!-- Bottom Layout: Metrics, HITL Override Controls & Logs -->
         <section class="results-and-logs">
-            
+
             <!-- Left panel: Audit Terminal logs -->
             <div class="terminal-panel glassy-panel flex-2">
                 <h3 class="panel-subtitle"><i class="fa-solid fa-terminal"></i> Audit Trail Terminal Logs</h3>
@@ -222,7 +221,7 @@
             <!-- Middle panel: Decision metrics -->
             <div class="metrics-panel glassy-panel flex-1" id="metrics-panel">
                 <h3 class="panel-subtitle"><i class="fa-solid fa-chart-pie"></i> Risk Evaluation Metrics</h3>
-                
+
                 <div class="metrics-content">
                     <!-- Gauge Score -->
                     <div class="score-circle-container">
@@ -231,7 +230,7 @@
                             <span class="score-label">COMPOSITE RISK</span>
                         </div>
                     </div>
-                    
+
                     <!-- Verdict Badge -->
                     <div class="verdict-container">
                         <span class="verdict-title">Final Verdict</span>
@@ -254,26 +253,17 @@
 
         <!-- Regulatory ECOA adverse Action Notice -->
         <section class="ecoa-section glassy-panel" id="ecoa-section" style="display:none;">
-            <h2 class="panel-title"><i class="fa-solid fa-stamp"></i> Formal ECOA Regulatory Credit Notice</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h2 class="panel-title" style="margin-bottom: 0;"><i class="fa-solid fa-stamp"></i> Formal ECOA Regulatory Credit Notice</h2>
+                <button id="btn-download-letter" class="glass-btn btn-primary" style="cursor: pointer; padding: 8px 16px; border-radius: 6px;">
+                    <i class="fa-solid fa-file-pdf"></i> Download as PDF
+                </button>
+            </div>
             <div class="ecoa-letter-content" id="ecoa-letter-content">
                 <!-- Rendered output -->
             </div>
         </section>
 
-    </div>
-
-    <!-- API Key Input Modal -->
-    <div id="apiKeyModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content glass-card">
-            <h3 class="neon-text" style="color: #A3E635; margin-bottom: 10px;"><i class="fa-solid fa-key"></i> Enter Groq API Key</h3>
-            <p>A Groq API Key is required to run the underwriting models. Your key is stored securely in your local browser storage.</p>
-            <div style="margin: 15px 0;">
-                <input type="password" id="modalApiKeyInput" placeholder="gsk_..." class="form-input" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(163,230,53,0.3); border-radius: 6px; color: #fff; text-align: center;">
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button id="btnSaveKey" class="glass-btn btn-primary" style="flex: 1; padding: 10px; cursor: pointer; background: #A3E635; color: #0A0A0A; border: none; border-radius: 6px; font-weight: bold;"><i class="fa-solid fa-check"></i> Save & Continue</button>
-            </div>
-        </div>
     </div>
 
     <!-- Three.js Library -->

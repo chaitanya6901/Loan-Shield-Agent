@@ -173,6 +173,7 @@ function positionNodes() {
 
 // 3. API & Workflow Execution States
 let activeSessionId = null;
+let lastLetterInfo = null; // { letter, applicant_name, applicant_id, decision, decision_date }
 let currentAuditLength = 0;
 
 async function loadBenchmarkTemplates() {
@@ -182,7 +183,7 @@ async function loadBenchmarkTemplates() {
     try {
         const response = await fetch('/api/benchmark');
         if (!response.ok) throw new Error('Failed to fetch benchmark profiles');
-        
+
         const cases = await response.json();
         grid.innerHTML = '';
 
@@ -193,7 +194,7 @@ async function loadBenchmarkTemplates() {
         profiles.forEach(profile => {
             const card = document.createElement('div');
             card.className = `benchmark-card`;
-            
+
             let badgeClass = 'badge-prime';
             let label = 'Prime';
             if (profile.target_scenario === 'Thin Credit') {
@@ -266,14 +267,15 @@ function resetWorkflowUI() {
     currentAuditLength = 0;
     document.getElementById('terminal-body').innerHTML = '';
     document.getElementById('metric-score').innerText = '-';
-    
+
     const badge = document.getElementById('verdict-badge');
     badge.className = 'verdict-badge neutral';
     badge.innerText = 'PENDING';
-    
+
     // Hide letter
     document.getElementById('ecoa-section').style.display = 'none';
     document.getElementById('ecoa-letter-content').innerHTML = '';
+    lastLetterInfo = null;
 
     // Reset hitl Empty controls
     document.getElementById('hitl-controls-body').innerHTML = `
@@ -288,7 +290,7 @@ function resetWorkflowUI() {
         node.className = 'graph-node';
         if (node.id === 'node-start') node.classList.add('node-start');
         if (node.id === 'node-join') node.classList.add('node-small');
-        
+
         const status = node.querySelector('.node-status');
         if (status) status.innerText = 'Idle';
     });
@@ -299,7 +301,7 @@ function resetWorkflowUI() {
 // Node State Glow Controller
 function updateGraphVisualization(state, isInterrupted, interruptId) {
     const auditTrail = state.audit_trail || [];
-    
+
     // Set nodes to completed if we have processed past them
     auditTrail.forEach(log => {
         let nodeEl = null;
@@ -349,7 +351,7 @@ function updateGraphVisualization(state, isInterrupted, interruptId) {
         if (lastLog.node_name === 'risk_scoring_node') {
             runningNode = document.getElementById('node-scorer');
         }
-        
+
         if (runningNode && !isInterrupted) {
             runningNode.classList.add('running');
             const status = runningNode.querySelector('.node-status');
@@ -370,7 +372,7 @@ function updateGraphVisualization(state, isInterrupted, interruptId) {
             hitlNode.classList.remove('running', 'completed');
             hitlNode.classList.add('paused');
             hitlNode.querySelector('.node-status').innerText = 'Escalated';
-            
+
             document.getElementById('path-score-hitl').classList.add('active');
             document.getElementById('node-scorer').classList.add('completed');
         }
@@ -408,7 +410,7 @@ function displayWorkflowResults(state) {
     if (decision) {
         let label = decision.replace('_', ' ');
         let badgeClass = 'neutral';
-        
+
         if (decision === 'AUTO_APPROVE') {
             label = 'APPROVED';
             badgeClass = 'approve';
@@ -427,7 +429,7 @@ function displayWorkflowResults(state) {
             label = 'HUMAN REVIEW';
             badgeClass = 'review';
         }
-        
+
         badge.innerText = label;
         badge.className = `verdict-badge ${badgeClass}`;
     }
@@ -446,7 +448,7 @@ function displayWorkflowResults(state) {
     if (ecoLetter) {
         const letterPanel = document.getElementById('ecoa-section');
         const content = document.getElementById('ecoa-letter-content');
-        
+
         const notifBanner = notif ? `
             <div style="background: rgba(163,230,53,0.1); border: 1px solid rgba(163,230,53,0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
                 <i class="fa-solid fa-bell" style="color: #A3E635;"></i>
@@ -459,12 +461,62 @@ function displayWorkflowResults(state) {
                 </div>
             </div>
         ` : '';
-        
+
         content.innerHTML = `${notifBanner}<h3>Decision Notice Issued</h3>
         <p style="white-space: pre-wrap;">${ecoLetter}</p>`;
-        
+
         letterPanel.style.display = 'block';
         letterPanel.scrollIntoView({ behavior: 'smooth' });
+
+        // Keep the raw letter + metadata around so the PDF download button can use it
+        lastLetterInfo = {
+            letter: ecoLetter,
+            applicant_name: state.name || '',
+            applicant_id: state.applicant_id || '',
+            decision: state.decision || '',
+            decision_date: state.decision_date || ''
+        };
+    }
+}
+
+// 6. Download the final decision letter as a PDF
+async function downloadLetterPDF() {
+    if (!lastLetterInfo || !lastLetterInfo.letter) {
+        logToTerminal(`[System] No letter available to download yet.`, 'warn');
+        return;
+    }
+
+    const btn = document.getElementById('btn-download-letter');
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Preparing PDF...`;
+
+    try {
+        const response = await fetch('/api/letter/pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(lastLetterInfo)
+        });
+
+        if (!response.ok) throw new Error('PDF generation failed');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeId = (lastLetterInfo.applicant_id || 'letter').replace(/[^A-Za-z0-9_-]/g, '');
+        a.download = `LoanShield_Decision_Notice_${safeId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+        logToTerminal(`[System] Decision letter PDF downloaded.`);
+    } catch (err) {
+        logToTerminal(`[System Error] Failed to generate PDF: ${err.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
     }
 }
 
@@ -524,16 +576,6 @@ async function handleFormSubmit(e) {
         email: document.getElementById('email').value
     };
 
-    const apiKey = localStorage.getItem('groq_api_key');
-    if (!apiKey) {
-        document.getElementById('apiKeyModal').style.display = 'flex';
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Verify Loan Approval Status`;
-        logToTerminal(`[System] Dispatch aborted: Groq API Key is missing.`, 'warn');
-        return;
-    }
-    payload.groq_api_key = apiKey;
-
     logToTerminal(`[System] Dispatching request for ${payload.name} (Amount: ₹${payload.loan_amount.toLocaleString()})`);
 
     try {
@@ -543,23 +585,23 @@ async function handleFormSubmit(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        
+
         if (!sessResponse.ok) throw new Error('Failed to instantiate analysis session');
-        
+
         const { session_id } = await sessResponse.json();
         activeSessionId = session_id;
-        
+
         // Step 2: Open SSE stream endpoint
         const sse = new EventSource(`/api/run?session_id=${session_id}`);
-        
+
         sse.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            
+
             if (data.type === 'event') {
                 const state = data.state;
                 printAuditTrailLogs(state.audit_trail || []);
                 updateGraphVisualization(state, data.is_interrupted, data.interrupt_id);
-                
+
                 if (data.is_interrupted) {
                     logToTerminal(`[System] Graph workflow interrupted: ${data.interrupt_id}. Halting for input.`, 'warn');
                     displayHITLControls(data.interrupt_id, data.interrupt_message);
@@ -602,7 +644,7 @@ async function submitResumeOverride(action) {
     if (!activeSessionId) return;
 
     logToTerminal(`[Underwriter] Submitted override input action: ${action.toUpperCase()}`);
-    
+
     // Clear HITL action panel back to empty state
     document.getElementById('hitl-controls-body').innerHTML = `
         <div class="hitl-empty-state">
@@ -617,14 +659,14 @@ async function submitResumeOverride(action) {
         });
 
         if (!response.ok) throw new Error('Override request failed');
-        
+
         const data = await response.json();
         const state = data.state;
-        
+
         // Print subsequent logs
         printAuditTrailLogs(state.audit_trail || []);
         updateGraphVisualization(state, data.is_interrupted, data.interrupt_id);
-        
+
         if (data.is_interrupted) {
             // Flow hit a secondary interrupt
             logToTerminal(`[System] Workflow hit secondary interrupt: ${data.interrupt_id}. Halting.`, 'warn');
@@ -653,7 +695,7 @@ function clearForm() {
     document.getElementById('applicant_id').value = "APP-NEW";
     document.getElementById('customer_id').value = "CU-NEW";
     document.getElementById('target_scenario').value = "Custom";
-    
+
     document.querySelectorAll('.benchmark-card').forEach(el => el.classList.remove('active'));
     resetWorkflowUI();
     logToTerminal(`[System] Cleared form fields and dashboard.`);
@@ -663,7 +705,7 @@ function clearForm() {
 window.addEventListener('DOMContentLoaded', () => {
     // Coordinate nodes placement
     positionNodes();
-    
+
     // Draw SVG connects
     setTimeout(drawNodeConnections, 100);
 
@@ -677,30 +719,8 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('application-form').addEventListener('submit', handleFormSubmit);
     document.getElementById('btn-clear').addEventListener('click', clearForm);
 
-    // API Key modal bindings
-    const apiKeyModal = document.getElementById('apiKeyModal');
-    const modalApiKeyInput = document.getElementById('modalApiKeyInput');
-    const btnSaveKey = document.getElementById('btnSaveKey');
-    const btnChangeKey = document.getElementById('btnChangeKey');
-
-    // Prompt for key on first load if missing
-    if (!localStorage.getItem('groq_api_key')) {
-        apiKeyModal.style.display = 'flex';
+    const btnDownloadLetter = document.getElementById('btn-download-letter');
+    if (btnDownloadLetter) {
+        btnDownloadLetter.addEventListener('click', downloadLetterPDF);
     }
-
-    btnSaveKey.addEventListener('click', () => {
-        const key = modalApiKeyInput.value.trim();
-        if (key) {
-            localStorage.setItem('groq_api_key', key);
-            apiKeyModal.style.display = 'none';
-            logToTerminal(`[System] Groq API Key saved locally. Ready to proceed.`);
-        } else {
-            alert('Please enter a valid Groq API Key.');
-        }
-    });
-
-    btnChangeKey.addEventListener('click', () => {
-        modalApiKeyInput.value = localStorage.getItem('groq_api_key') || '';
-        apiKeyModal.style.display = 'flex';
-    });
 });
