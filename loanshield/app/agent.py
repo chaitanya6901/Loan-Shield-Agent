@@ -77,7 +77,7 @@ async def gatekeeper_node_func(ctx: Context, node_input: Any) -> AsyncGenerator[
     # 1a. Redact PII
     redacted = pii_redactor_skill(
         name=payload.get("name", ""),
-        ssn=payload.get("ssn", ""),
+        aadhaar_number=payload.get("aadhaar_number", ""),
         dob=payload.get("dob", ""),
         phone_number=str(payload.get("phone_number", "")),
         home_address=payload.get("home_address", "")
@@ -513,8 +513,9 @@ Format requirements:
 - If declined, cite the specific reasons clearly in alignment with Section 701(a) of the Equal Credit Opportunity Act (ECOA). Address the reasons (e.g. low credit score, high debt-to-income ratio, cash flow insolvency, or synthetic/fraud flag triggers) in plain qualitative language.
 - Do NOT include any numeric scores, percentages, or raw metric values anywhere in the letter (no composite score, component scores, stability modifier value, etc.) — describe the reasoning qualitatively only.
 - Do NOT use abbreviations or short forms for financial terms — spell them out in full every time (e.g. write "debt-to-income ratio" in full, never "DTI"; write "Equal Credit Opportunity Act (ECOA)" in full on first use).
-- DO NOT use the customer's actual SSN, phone number, or home address. Reference the redacted fields.
+- DO NOT use the customer's actual Aadhaar Number, phone number, or home address. Reference the redacted fields compulsorily.
 - Put your complete generated letter inside the 'eco_letter' field.
+- At the end, do not use any name for regards. Just keep it to the role
 """,
     output_schema=ExplanationOutput,
     output_key="explanation_result",
