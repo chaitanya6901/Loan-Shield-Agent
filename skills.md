@@ -283,7 +283,7 @@ graph TD
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. **pii_redactor_skill**:
-   - Regex matches for Name (capitalized structures), SSN (`\b\d{3}-\d{2}-\d{4}\b`), DOB, Phone (`\b\d{3}-\d{3}-\d{4}\b` or negative CSV indices), and Address lines.
+   - Regex matches for Name (capitalized structures), Aadhaar (`\b\d{12}\b`), DOB, Phone (`\b\d{3}-\d{3}-\d{4}\b` or negative CSV indices), and Address lines.
    - LLM fallback for validating semantic patterns and masking them with token replacements (e.g. `[REDACTED_SSN]`).
 2. **income_verify_skill**:
    - Computes rolling deposit averages over 3 months from Banking MCP.

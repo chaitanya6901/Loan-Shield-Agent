@@ -36,31 +36,31 @@ This is the default Google ADK developer playground portal:
 ## 📋 The 6 Test Scenarios & Inputs
 
 ### Scenario 1: Prime Profile (Auto Approve)
-*   **Applicant**: Liam Smith
+*   **Applicant**: Aarav Sharma
 *   **Objective**: Test clean, low-risk workflow execution that results in immediate automated approval without interruptions.
-*   **Expected Verdict**: `APPROVED` (Score ~ 98.0)
+*   **Expected Verdict**: `APPROVED` (Score ~ 85.0)
 *   **ADK JSON Input**:
     ```json
     {
-      "applicant_id": "APP-001",
-      "customer_id": "CU-001",
-      "name": "Liam Smith",
-      "ssn": "960-24-6191",
-      "dob": "01-05-1976",
-      "phone_number": "-7853",
-      "home_address": "566 Oak Ave, Los Angeles, CA 47194",
-      "age": 50,
-      "declared_income_monthly": 11171,
-      "loan_amount": 31023,
-      "purpose": "Used Car Loan",
-      "target_scenario": "Prime"
-    }
+    "applicant_id": "APP-001",
+    "customer_id": "CU-001",
+    "name": "Aarav Sharma",
+    "aadhar_number": "938570839347",
+    "dob": "01-05-1976",
+    "phone_number": "+91 98765 93810",
+    "home_address": "Flat 101, Building 1, Sector 62, Noida, Uttar Pradesh 201301",
+    "age": 50,
+    "declared_income_monthly": 949535,
+    "loan_amount": 2636955,
+    "purpose": "Used Car Loan",
+    "target_scenario": "Prime"
+  }
     ```
 
 ---
 
 ### Scenario 2: Thin Credit Profile (HITL Underwriter Review)
-*   **Applicant**: Harper Robinson
+*   **Applicant**: Zara Ahmed
 *   **Objective**: Test Escalation to Human Underwriting. The applicant has thin credit history causing a risk score in the review band (60 to 75).
 *   **Expected Flow**: The engine pauses at `human_underwriter_hitl_node` and requests input.
 *   **Action Required**: Click **APPROVE LOAN** or **REJECT LOAN** in the override panel to resume.
@@ -68,75 +68,75 @@ This is the default Google ADK developer playground portal:
 *   **ADK JSON Input**:
     ```json
     {
-      "applicant_id": "APP-018",
-      "customer_id": "CU-018",
-      "name": "Harper Robinson",
-      "ssn": "917-34-9716",
-      "dob": "10-04-1999",
-      "phone_number": "-6719",
-      "home_address": "2468 Maple Dr, Houston, TX 87575",
-      "age": 27,
-      "declared_income_monthly": 4971,
-      "loan_amount": 16002,
-      "purpose": "Major Purchase",
-      "target_scenario": "Thin Credit"
-    }
+    "applicant_id": "APP-018",
+    "customer_id": "CU-018",
+    "name": "Zara Ahmed",
+    "aadhar_number": "197581276140",
+    "dob": "10-04-1999",
+    "phone_number": "+91 98400 40495",
+    "home_address": "Flat 322, Building 20, Besant Nagar, Chennai, Tamil Nadu 600090",
+    "age": 27,
+    "declared_income_monthly": 422535,
+    "loan_amount": 1360170,
+    "purpose": "Major Purchase",
+    "target_scenario": "Thin Credit"
+  } 
     ```
 
 ---
 
 ### Scenario 3: High Debt-to-Income Ratio (Auto Reject)
-*   **Applicant**: Jackson Nguyen
+*   **Applicant**: Shaurya Pratap
 *   **Objective**: Test automated reject due to financial insolvency (high DTI).
 *   **Expected Verdict**: `REJECTED` (Score < 50.0)
 *   **Adverse Action Reasons**: Low FICO credit score, high debt-to-income ratio.
 *   **ADK JSON Input**:
     ```json
     {
-      "applicant_id": "APP-031",
-      "customer_id": "CU-031",
-      "name": "Jackson Nguyen",
-      "ssn": "507-37-5468",
-      "dob": "06-03-1994",
-      "phone_number": "-8346",
-      "home_address": "3819 Oak Ave, Los Angeles, CA 94665",
-      "age": 32,
-      "declared_income_monthly": 4540,
-      "loan_amount": 64835,
-      "purpose": "Emergency Expenses",
-      "target_scenario": "High DTI"
-    }
+    "applicant_id": "APP-031",
+    "customer_id": "CU-031",
+    "name": "Shaurya Pratap",
+    "aadhar_number": "161971807456",
+    "dob": "06-03-1994",
+    "phone_number": "+91 98765 10851",
+    "home_address": "Flat 491, Building 11, Sector 62, Noida, Uttar Pradesh 201301",
+    "age": 32,
+    "declared_income_monthly": 385900,
+    "loan_amount": 5510975,
+    "purpose": "Emergency Expenses",
+    "target_scenario": "High DTI"
+  }
     ```
 
 ---
 
 ### Scenario 4: Identity / Synthetic Fraud Flag (Auto Reject)
-*   **Applicant**: Grace Carter
+*   **Applicant**: Avani Mehta
 *   **Objective**: Test automated fraud prevention. The SSN matches the credit bureau records but the associated name does not, indicating identity mismatch/synthetic fraud.
 *   **Expected Verdict**: `REJECTED` (Fraud Flag = True)
 *   **Adverse Action Reasons**: High-risk synthetic fraud flag triggered (identity mismatch).
 *   **ADK JSON Input**:
     ```json
     {
-      "applicant_id": "APP-042",
-      "customer_id": "CU-042",
-      "name": "Grace Carter",
-      "ssn": "322-15-8489",
-      "dob": "06-05-1985",
-      "phone_number": "-10792",
-      "home_address": "8937 Washington Blvd, San Antonio, TX 10117",
-      "age": 41,
-      "declared_income_monthly": 8551,
-      "loan_amount": 44309,
-      "purpose": "Used Car Loan",
-      "target_scenario": "Fraud"
-    }
+    "applicant_id": "APP-042",
+    "customer_id": "CU-042",
+    "name": "Avani Mehta",
+    "aadhar_number": "838723520773",
+    "dob": "06-05-1985",
+    "phone_number": "+91 91234 22676",
+    "home_address": "Flat 634, Building 13, HSR Layout, Bengaluru, Karnataka 560102",
+    "age": 41,
+    "declared_income_monthly": 726835,
+    "loan_amount": 3766265,
+    "purpose": "Used Car Loan",
+    "target_scenario": "Fraud"
+  }
     ```
 
 ---
 
 ### Scenario 5: Missing Required Documents (HITL Document Bypass)
-*   **Applicant**: John Turner
+*   **Applicant**: Rishabh Pant
 *   **Objective**: Test Escalation to Document Check. The applicant's document storage checklist is incomplete.
 *   **Expected Flow**: The engine pauses at `gatekeeper_node` and requests input (`document_override`).
 *   **Action Required**: Click **Override & Resume** (approves bypassing document checks) or **Reject Application**.
@@ -144,42 +144,42 @@ This is the default Google ADK developer playground portal:
 *   **ADK JSON Input**:
     ```json
     {
-      "applicant_id": "APP-047",
-      "customer_id": "CU-047",
-      "name": "John Turner",
-      "ssn": "715-60-2970",
-      "dob": "01-09-1987",
-      "phone_number": "-3443",
-      "home_address": "5667 Lakeview Dr, San Diego, CA 66819",
-      "age": 39,
-      "declared_income_monthly": 6692,
-      "loan_amount": 20408,
-      "purpose": "Business Venture",
-      "target_scenario": "Missing Documents"
-    }
+    "applicant_id": "APP-047",
+    "customer_id": "CU-047",
+    "name": "Rishabh Pant",
+    "aadhar_number": "268836004533",
+    "dob": "01-09-1987",
+    "phone_number": "+91 94321 15695",
+    "home_address": "Flat 699, Building 23, Salt Lake Sector 5, Kolkata, West Bengal 700091",
+    "age": 39,
+    "declared_income_monthly": 568820,
+    "loan_amount": 1734680,
+    "purpose": "Business Venture",
+    "target_scenario": "Missing Documents"
+  }
     ```
 
 ---
 
 ### Scenario 6: Terminated Employment Status (Auto Reject)
-*   **Applicant**: James Vance
+*   **Applicant**: Ranbir Kapoor
 *   **Objective**: Test rejection due to lack of stable source of income (recent termination status in employment records).
 *   **Expected Verdict**: `REJECTED` (Score < 50.0)
 *   **Adverse Action Reasons**: Employment termination flag (unstable income source).
 *   **ADK JSON Input**:
     ```json
     {
-      "applicant_id": "APP-051",
-      "customer_id": "CU-051",
-      "name": "James Vance",
-      "ssn": "415-88-2931",
-      "dob": "14-11-1988",
-      "phone_number": "-4311",
-      "home_address": "812 Willow St, Miami, FL 33101",
-      "age": 37,
-      "declared_income_monthly": 9500,
-      "loan_amount": 45000,
-      "purpose": "Debt Consolidation",
-      "target_scenario": "Terminated Employment"
-    }
+    "applicant_id": "APP-051",
+    "customer_id": "CU-051",
+    "name": "Ranbir Kapoor",
+    "aadhar_number": "632037211828",
+    "dob": "14-11-1988",
+    "phone_number": "+91 98765 59615",
+    "home_address": "Flat 751, Building 1, Sector 62, Noida, Uttar Pradesh 201301",
+    "age": 37,
+    "declared_income_monthly": 807500,
+    "loan_amount": 3825000,
+    "purpose": "Debt Consolidation",
+    "target_scenario": "Terminated Employment Fraud"
+  }
     ```
