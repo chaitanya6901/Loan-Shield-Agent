@@ -213,18 +213,21 @@ h1, h2, h3, .logo-title, .panel-title {
 /* Main Columns */
 .main-content {
     display: flex;
+    flex-wrap: wrap;
     gap: 24px;
 }
 
 .form-section {
-    flex: 1;
+    flex: 1 1 480px;
     min-width: 480px;
 }
 
 .visualizer-section {
-    flex: 1.5;
+    flex: 1 1 1068px;
+    min-width: 1068px;
     display: flex;
     flex-direction: column;
+    overflow-x: auto;
 }
 
 .panel-title {
@@ -340,6 +343,7 @@ h1, h2, h3, .logo-title, .panel-title {
 .graph-viewport {
     position: relative;
     width: 100%;
+    min-width: 1020px;
     height: 480px;
     background: rgba(5, 5, 5, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.03);
@@ -380,7 +384,7 @@ h1, h2, h3, .logo-title, .panel-title {
 /* Graph Nodes */
 .graph-node {
     position: absolute;
-    width: 170px;
+    width: 145px;
     height: 65px;
     background: rgba(20, 20, 20, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.1);

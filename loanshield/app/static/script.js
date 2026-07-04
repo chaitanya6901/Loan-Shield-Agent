@@ -135,7 +135,7 @@ function drawNodeConnections() {
             const dx = x2 - x1;
             const dy = y2 - y1;
             let d = `M ${x1} ${y1} C ${x1 + dx * 0.4} ${y1}, ${x2 - dx * 0.4} ${y2}, ${x2} ${y2}`;
-            
+
             // Adjust paths for direct top-to-bottom lines
             if (Math.abs(dx) < 10) {
                 d = `M ${x1} ${y1} L ${x2} ${y2}`;
@@ -148,16 +148,24 @@ function drawNodeConnections() {
 
 // Position nodes dynamically inside the Logic Grid
 function positionNodes() {
+    // Percentages below were solved against the guaranteed minimum viewport
+    // width (see .graph-viewport min-width: 1020px in style.css) so that,
+    // combined with each node's real box width (145px default / 60px start /
+    // 50px small) and the translate(-50%, -50%) centering below, every pair
+    // of horizontally-adjacent nodes keeps a positive gap (~15-30px) instead
+    // of overlapping or spilling past the container edge. If the panel
+    // renders wider than 1020px (the common case) these same percentages
+    // just spread out further apart — still safe, just roomier.
     const positions = {
-        "node-start": { left: "5%", top: "10%" },
-        "node-gatekeeper": { left: "5%", top: "50%" },
-        "node-financial": { left: "30%", top: "25%" },
-        "node-fraud": { left: "30%", top: "75%" },
-        "node-join": { left: "50%", top: "50%" },
-        "node-scorer": { left: "62%", top: "50%" },
-        "node-hitl": { left: "75%", top: "20%" },
-        "node-explanation": { left: "75%", top: "75%" },
-        "node-notifier": { left: "90%", top: "50%" }
+        "node-start": { left: "6%", top: "15%" },
+        "node-gatekeeper": { left: "19%", top: "50%" },
+        "node-financial": { left: "35%", top: "22%" },
+        "node-fraud": { left: "35%", top: "78%" },
+        "node-join": { left: "47%", top: "50%" },
+        "node-scorer": { left: "58%", top: "50%" },
+        "node-hitl": { left: "75%", top: "22%" },
+        "node-explanation": { left: "75%", top: "78%" },
+        "node-notifier": { left: "91%", top: "50%" }
     };
 
     for (const [id, pos] of Object.entries(positions)) {
@@ -228,7 +236,7 @@ async function loadBenchmarkTemplates() {
                 document.getElementById('applicant_id').value = profile.applicant_id;
                 document.getElementById('customer_id').value = profile.customer_id;
                 document.getElementById('name').value = profile.name;
-                document.getElementById('ssn').value = profile.ssn;
+                document.getElementById('aadhaar_number').value = profile.aadhaar_number;
                 document.getElementById('dob').value = profile.dob;
                 document.getElementById('phone_number').value = profile.phone_number;
                 document.getElementById('home_address').value = profile.home_address;
@@ -564,7 +572,7 @@ async function handleFormSubmit(e) {
         applicant_id: document.getElementById('applicant_id').value || "APP-NEW",
         customer_id: document.getElementById('customer_id').value || "CU-NEW",
         name: document.getElementById('name').value,
-        ssn: document.getElementById('ssn').value,
+        aadhaar_number: document.getElementById('aadhaar_number').value,
         dob: document.getElementById('dob').value,
         phone_number: document.getElementById('phone_number').value,
         home_address: document.getElementById('home_address').value,
@@ -708,6 +716,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Draw SVG connects
     setTimeout(drawNodeConnections, 100);
+
+    // Keep connection lines aligned with nodes when the panel is resized
+    let graphResizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(graphResizeTimer);
+        graphResizeTimer = setTimeout(drawNodeConnections, 150);
+    });
 
     // Initialize WebGL Dot particle system
     initWebGL();

@@ -3,16 +3,16 @@ from typing import Dict, Any
 
 def pii_redactor_skill(
     name: str, 
-    ssn: str, 
+    aadhaar_number: str,
     dob: str, 
     phone_number: str, 
     home_address: str
 ) -> Dict[str, str]:
-    """Redacts PII (Name, SSN, DOB, Phone, Address) from the application input.
+    """Redacts PII (Name, Aadhaar Number, DOB, Phone, Address) from the application input.
 
     Args:
         name: The applicant's name.
-        ssn: The applicant's Social Security Number.
+        aadhaar_number: The applicant's Social Security Number.
         dob: The applicant's Date of Birth.
         phone_number: The applicant's phone number.
         home_address: The applicant's home address.
@@ -22,12 +22,12 @@ def pii_redactor_skill(
     """
     # Masks name
     redacted_name = "[REDACTED_NAME]"
-    
-    # Masks SSN: match standard \d{3}-\d{2}-\d{4} or similar
-    if re.match(r"^\d{3}-\d{2}-\d{4}$", ssn.strip()):
-        redacted_ssn = "[REDACTED_SSN]"
+
+    # Masks Aadhaar Number: match standard \d{12} or similar
+    if re.match(r"^\d{12}$", aadhaar_number.strip()):
+        redacted_aadhaar_number = "[REDACTED_AADHAAR_NUMBER]"
     else:
-        redacted_ssn = "[REDACTED_SSN_INVALID_FORMAT]"
+        redacted_aadhaar_number = "[REDACTED_AADHAAR_NUMBER]"
         
     # Masks DOB: match standard dates like DD-MM-YYYY or YYYY-MM-DD
     if re.match(r"^\d{2}-\d{2}-\d{4}$", dob.strip()) or re.match(r"^\d{4}-\d{2}-\d{2}$", dob.strip()):
@@ -43,7 +43,7 @@ def pii_redactor_skill(
     
     return {
         "redacted_name": redacted_name,
-        "redacted_ssn": redacted_ssn,
+        "redacted_aadhaar_number": redacted_aadhaar_number,
         "redacted_dob": redacted_dob,
         "redacted_phone_number": redacted_phone_number,
         "redacted_home_address": redacted_home_address

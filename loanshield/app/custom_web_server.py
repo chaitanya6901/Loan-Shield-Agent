@@ -302,7 +302,7 @@ async def get_benchmark_cases():
                 "applicant_id": row["applicant_id"],
                 "customer_id": row["customer_id"],
                 "name": row["name"],
-                "ssn": row["ssn"],
+                "aadhaar_number": row["aadhaar_number"],
                 "dob": row["dob"],
                 "phone_number": row["phone_number"],
                 "home_address": row["home_address"],
